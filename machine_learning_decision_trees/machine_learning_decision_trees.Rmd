@@ -1,0 +1,169 @@
+---
+title: "Machine Learning: Decision Trees"
+author: "Daniel Navarro"
+date: "2025-06-27"
+output: html_document
+---
+
+# Working with Classification Trees
+
+Goal of the classification is to predict whether a loan can default or not.
+
+```{r load the least required library, message=FALSE, include=FALSE}
+if (!require(tree)) install.packages('tree')
+```
+
+
+```{r load loan data}
+loan <- as.data.frame(read.csv('../ExerciseFiles/02/loan.csv'))
+loan$Default <- as.factor(loan$Default)
+head(loan)
+```
+
+```{r}
+str(loan)
+```
+
+```{r}
+summary(loan)
+```
+
+## 1. Visualize the data-set
+
+
+```{r}
+boxplot(Income ~ Default, data = loan)
+```
+```{r}
+boxplot(Income ~ Default, data = loan)
+```
+
+```{r}
+plot(loan$Loan.Amount, loan$Income, col = c('blue', 'orange')[factor(loan$Default)], pch = c('^', 'o')[factor(loan$Default)], sub = '^ = No, o = Yes')
+```
+
+## 2. Prepare the data
+
+Hier both languages take a different procedure.
+
+```{r}
+set.seed(1234)
+train <- sample(1:nrow(loan), nrow(loan) * 0.8)
+loan.test <- loan[-train,]
+Default.test <- loan$Default[-train]
+```
+
+## 3. Train and Evaluate the Classification Tree
+
+```{r}
+tree.loan <- tree(Default ~., loan, subset = train)
+tree.pred <- predict(tree.loan, loan.test, type = 'class')
+table(tree.pred, Default.test)
+```
+Model can predict `r round((3 + 1) / 6 * 100, 2)`% of the cases correctly.
+
+## 4. Visualize the Classification Tree
+
+```{r}
+plot(tree.loan)
+text(tree.loan, pretty = 0)
+```
+
+```{r}
+tree.loan
+```
+
+Table shows that Income variable is more important (around 72%) than the loan amount (around 62%) to predict whether the loan will default.
+
+## 5. Prune the Classification Tree
+
+```{r}
+cv.loan <- cv.tree(tree.loan, FUN = prune.misclass)
+names(cv.loan)
+cv.loan
+```
+
+Deviation is already at its low with 4 nodes in the three, pruning doesn't have benefits in this case.
+
+```{r}
+par(mfrow = c(1, 2))
+plot(cv.loan$size, cv.loan$dev, type = 'b')
+plot(cv.loan$k, cv.loan$dev, type = 'b')
+```
+
+# Working with Regression Trees
+
+Goal is to predict salary of a person given the age and education.
+
+```{r load income data}
+income <- as.data.frame(read.csv('../ExerciseFiles/03/income.csv'))
+income$Education <- as.factor(income$Education)
+head(income)
+```
+
+## 1. Explore the data
+
+```{r}
+str(income)
+```
+
+```{r}
+summary(income)
+```
+
+```{r}
+boxplot(Salary ~ Education, income, col = 'lightblue')
+```
+
+```{r}
+boxplot(Age ~ Education, income, col = 'lightblue')
+```
+
+```{r}
+plot(income$Age, income$Salary, col = c('blue', 'orange', 'green', 'red', 'black')[factor(income$Education)], sub = 'B = Bachelors, D = Diploma, C = Doctorate, M = Master, P = Professional', pch = c('B', 'D', 'C', 'M', 'P')[factor(income$Education)])
+```
+
+## 2. Prepare the data
+
+```{r}
+set.seed(1)
+train <- sample(1:nrow(income), nrow(income) * 0.8)
+tree.income <- tree(Salary ~ ., income, subset = train)
+summary(tree.income)
+```
+
+## 3. Visualize the Regression Tree
+
+```{r}
+plot(tree.income)
+text(tree.income, pretty = FALSE)
+```
+
+Visualized tree is not so complex and indicates that education level is the most influencial factor on the income level.
+
+## 4. Prune the Regression Tree
+
+```{r}
+cv.income <- cv.tree(tree.income)
+names(cv.income)
+plot(cv.income$size, cv.income$salary, type = 'b')
+```
+
+Cross-validation suggest that already used 4 nodes is the optimal number of nodes to obtain the minimum deviation, so pruning only repeats the analysis.
+
+```{r}
+prune.income <- prune.tree(tree.income, best = 4)
+plot(prune.income)
+text(prune.income, pretty = 0)
+```
+
+
+```{r}
+yhat <- predict(prune.income, newdata = income[-train, ])
+income.test <- income[-train, 'Salary']
+plot(yhat, income.test)
+# abline(0, 1)
+mean((yhat - income.test) ^ 2)
+```
+
+This model predicts an average salary of `r round(sqrt(mean((yhat - income.test) ^ 2)), 2)` dollars per person.

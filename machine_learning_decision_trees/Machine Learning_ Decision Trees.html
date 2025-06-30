@@ -1,0 +1,228 @@
+
+  Machine Learning: Decision Trees
+
+
+        Daniel Navarro
+
+
+        2025-06-27
+
+
+  Working with Classification Trees
+
+Goal of the classification is to predict whether a loan can default or not.
+
+|loan <- as.data.frame(read.csv('../ExerciseFiles/02/loan.csv'))
+loan$Default <- as.factor(loan$Default)
+head(loan)|
+
+|##   Income Loan.Amount Default
+## 1     15           8      No
+## 2     30           8      No
+## 3      5           9     Yes
+## 4     22          10      No
+## 5     33          12      No
+## 6     18          15      No|
+
+|str(loan)|
+
+|## 'data.frame':    30 obs. of  3 variables:
+##  $ Income     : int  15 30 5 22 33 18 28 12 24 9 ...
+##  $ Loan.Amount: int  8 8 9 10 12 15 20 21 22 30 ...
+##  $ Default    : Factor w/ 2 levels "No","Yes": 1 1 2 1 1 1 1 2 2 2 ...|
+
+|summary(loan)|
+
+|##      Income       Loan.Amount     Default 
+##  Min.   : 5.00   Min.   :  8.00   No :17  
+##  1st Qu.:13.00   1st Qu.: 21.25   Yes:13  
+##  Median :18.00   Median : 49.00           
+##  Mean   :18.77   Mean   : 51.97           
+##  3rd Qu.:25.50   3rd Qu.: 79.50           
+##  Max.   :34.00   Max.   :110.00|
+
+
+    1. Visualize the data-set
+
+|boxplot(Income ~ Default, data = loan)|
+
+|boxplot(Income ~ Default, data = loan)|
+
+|plot(loan$Loan.Amount, loan$Income, col = c('blue', 'orange')[factor(loan$Default)], pch = c('^', 'o')[factor(loan$Default)], sub = '^ = No, o = Yes')|
+
+
+    2. Prepare the data
+
+Hier both languages take a different procedure.
+
+|set.seed(1234)
+train <- sample(1:nrow(loan), nrow(loan) * 0.8)
+loan.test <- loan[-train,]
+Default.test <- loan$Default[-train]|
+
+
+    3. Train and Evaluate the Classification Tree
+
+|tree.loan <- tree(Default ~., loan, subset = train)
+tree.pred <- predict(tree.loan, loan.test, type = 'class')
+table(tree.pred, Default.test)|
+
+|##          Default.test
+## tree.pred No Yes
+##       No   3   1
+##       Yes  1   1|
+
+Model can predict 66.67% of the cases correctly.
+
+
+    4. Visualize the Classification Tree
+
+|plot(tree.loan)
+text(tree.loan, pretty = 0)|
+
+|tree.loan|
+
+|## node), split, n, deviance, yval, (yprob)
+##       * denotes terminal node
+## 
+##  1) root 24 33.100 No ( 0.5417 0.4583 )  
+##    2) Income < 12.5 6  0.000 Yes ( 0.0000 1.0000 ) *
+##    3) Income > 12.5 18 21.270 No ( 0.7222 0.2778 )  
+##      6) Loan.Amount < 21 5  0.000 No ( 1.0000 0.0000 ) *
+##      7) Loan.Amount > 21 13 17.320 No ( 0.6154 0.3846 )  
+##       14) Loan.Amount < 77 7  8.376 No ( 0.7143 0.2857 ) *
+##       15) Loan.Amount > 77 6  8.318 No ( 0.5000 0.5000 ) *|
+
+Table shows that Income variable is more important (around 72%) than the
+loan amount (around 62%) to predict whether the loan will default.
+
+
+    5. Prune the Classification Tree
+
+|cv.loan <- cv.tree(tree.loan, FUN = prune.misclass)
+names(cv.loan)|
+
+|## [1] "size"   "dev"    "k"      "method"|
+
+|cv.loan|
+
+|## $size
+## [1] 4 2 1
+## 
+## $dev
+## [1]  6  6 18
+## 
+## $k
+## [1] -Inf    0    6
+## 
+## $method
+## [1] "misclass"
+## 
+## attr(,"class")
+## [1] "prune"         "tree.sequence"|
+
+Deviation is already at its low with 4 nodes in the three, pruning
+doesn’t have benefits in this case.
+
+|par(mfrow = c(1, 2))
+plot(cv.loan$size, cv.loan$dev, type = 'b')
+plot(cv.loan$k, cv.loan$dev, type = 'b')|
+
+
+  Working with Regression Trees
+
+Goal is to predict salary of a person given the age and education.
+
+|income <- as.data.frame(read.csv('../ExerciseFiles/03/income.csv'))
+income$Education <- as.factor(income$Education)
+head(income)|
+
+|##   Age Education Salary
+## 1  25 Bachelors   43.9
+## 2  30 Bachelors   54.4
+## 3  45 Bachelors   62.5
+## 4  55 Bachelors   72.5
+## 5  65 Bachelors   74.6
+## 6  35 Doctorate   77.5|
+
+
+    1. Explore the data
+
+|str(income)|
+
+|## 'data.frame':    30 obs. of  3 variables:
+##  $ Age      : int  25 30 45 55 65 35 55 65 25 30 ...
+##  $ Education: Factor w/ 5 levels "Bachelors","Diploma",..: 1 1 1 1 1 3 3 3 2 2 ...
+##  $ Salary   : num  43.9 54.4 62.5 72.5 74.6 ...|
+
+|summary(income)|
+
+|##       Age               Education      Salary      
+##  Min.   :24.00   Bachelors   :10   Min.   : 16.80  
+##  1st Qu.:30.50   Diploma     : 7   1st Qu.: 46.35  
+##  Median :45.00   Doctorate   : 5   Median : 62.10  
+##  Mean   :43.37   Masters     : 5   Mean   : 64.41  
+##  3rd Qu.:55.00   Professional: 3   3rd Qu.: 76.80  
+##  Max.   :65.00                     Max.   :118.00|
+
+|boxplot(Salary ~ Education, income, col = 'lightblue')|
+
+|boxplot(Age ~ Education, income, col = 'lightblue')|
+
+|plot(income$Age, income$Salary, col = c('blue', 'orange', 'green', 'red', 'black')[factor(income$Education)], sub = 'B = Bachelors, D = Diploma, C = Doctorate, M = Master, P = Professional', pch = c('B', 'D', 'C', 'M', 'P')[factor(income$Education)])|
+
+
+    2. Prepare the data
+
+|set.seed(1)
+train <- sample(1:nrow(income), nrow(income) * 0.8)
+tree.income <- tree(Salary ~ ., income, subset = train)
+summary(tree.income)|
+
+|## 
+## Regression tree:
+## tree(formula = Salary ~ ., data = income, subset = train)
+## Number of terminal nodes:  4 
+## Residual mean deviance:  140.4 = 2808 / 20 
+## Distribution of residuals:
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+## -30.800  -3.790   0.425   0.000   4.534  24.090|
+
+
+    3. Visualize the Regression Tree
+
+|plot(tree.income)
+text(tree.income, pretty = FALSE)|
+
+Visualized tree is not so complex and indicates that education level is
+the most influencial factor on the income level.
+
+
+    4. Prune the Regression Tree
+
+|cv.income <- cv.tree(tree.income)
+names(cv.income)|
+
+|## [1] "size"   "dev"    "k"      "method"|
+
+|plot(cv.income$size, cv.income$salary, type = 'b')|
+
+Cross-validation suggest that already used 4 nodes is the optimal number
+of nodes to obtain the minimum deviation, so pruning only repeats the
+analysis.
+
+|prune.income <- prune.tree(tree.income, best = 4)
+plot(prune.income)
+text(prune.income, pretty = 0)|
+
+|yhat <- predict(prune.income, newdata = income[-train, ])
+income.test <- income[-train, 'Salary']
+plot(yhat, income.test)|
+
+|# abline(0, 1)
+mean((yhat - income.test) ^ 2)|
+
+|## [1] 185.5319|
+
+This model predicts an average salary of 13.62 dollars per person.
+

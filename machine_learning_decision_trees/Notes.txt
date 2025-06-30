@@ -1,0 +1,3 @@
+Reproducing the procedure with a different programming language (Python and R in this case) is not an straight procedure and inevitably there are differences in the results.
+
+The classification Tree in R obtained better results in the first run with no benefits foresee if the tree were prune.
