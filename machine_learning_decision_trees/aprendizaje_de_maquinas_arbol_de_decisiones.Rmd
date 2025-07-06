@@ -1,0 +1,164 @@
+---
+title: "Aprendizaje de máquinas: Árbol de decisiones"
+author: "Daniel Navarro"
+date: "2025-07-06"
+output: html_document
+---
+
+# Trabajando con Árboles de Clasificación
+
+El objetivo es predecir si una solicitud de crédito puede resultar en deuda o no.
+
+```{r load the least required library, message=FALSE, include=FALSE}
+if (!require(tree)) install.packages('tree')
+```
+
+
+```{r load loan data}
+loan <- as.data.frame(read.csv('../ExerciseFiles/02/loan.csv'))
+loan$Default <- as.factor(loan$Default)
+head(loan)
+```
+
+```{r}
+str(loan)
+```
+
+```{r}
+summary(loan)
+```
+
+## 1. Visualizar el conjunto de datos
+
+
+```{r}
+boxplot(Income ~ Default, data = loan)
+```
+```{r}
+boxplot(Income ~ Default, data = loan)
+```
+
+```{r}
+plot(loan$Loan.Amount, loan$Income, col = c('blue', 'orange')[factor(loan$Default)], pch = c('^', 'o')[factor(loan$Default)], sub = '^ = No, o = Yes')
+```
+
+## 2. Preparar los datos
+
+En esta etapa ambos lenguajes de programación toman caminos diferentes.
+
+```{r}
+set.seed(1234)
+train <- sample(1:nrow(loan), nrow(loan) * 0.8)
+loan.test <- loan[-train,]
+Default.test <- loan$Default[-train]
+```
+
+## 3. Entrenar y evaluar el árbol de decisiones
+
+```{r}
+tree.loan <- tree(Default ~., loan, subset = train)
+tree.pred <- predict(tree.loan, loan.test, type = 'class')
+table(tree.pred, Default.test)
+```
+El modelo puede predecir correctamente el `r round((3 + 1) / 6 * 100, 2)`% de los casos.
+
+## 4. Visualizar el árbol de decisiones
+
+```{r}
+plot(tree.loan)
+text(tree.loan, pretty = 0)
+```
+
+```{r}
+tree.loan
+```
+El cuadro muestra que la variable ingreso (Income) es más importante (alrededor del 72%) que el monto del crédito (Loan amount) (alrededor del 62%) para predecir si el crédito resultará en deuda o no.
+
+## 5. Podando el árbol de decisiones
+
+```{r}
+cv.loan <- cv.tree(tree.loan, FUN = prune.misclass)
+names(cv.loan)
+cv.loan
+```
+La desviación ya se encuentra en su punto más bajo con cuadro nodos en el árbol, el podado no aporta beneficios en este caso.
+
+```{r}
+par(mfrow = c(1, 2))
+plot(cv.loan$size, cv.loan$dev, type = 'b')
+plot(cv.loan$k, cv.loan$dev, type = 'b')
+```
+
+# Trabajando con árboles de regresión en Python
+
+El objetivo es predecir el salario de una persona según su edad y nivel de educación.
+
+```{r load income data}
+income <- as.data.frame(read.csv('../ExerciseFiles/03/income.csv'))
+income$Education <- as.factor(income$Education)
+head(income)
+```
+
+## 1. Explorar los datos
+
+```{r}
+str(income)
+```
+
+```{r}
+summary(income)
+```
+
+```{r}
+boxplot(Salary ~ Education, income, col = 'lightblue')
+```
+
+```{r}
+boxplot(Age ~ Education, income, col = 'lightblue')
+```
+
+```{r}
+plot(income$Age, income$Salary, col = c('blue', 'orange', 'green', 'red', 'black')[factor(income$Education)], sub = 'B = Bachelors, D = Diploma, C = Doctorate, M = Master, P = Professional', pch = c('B', 'D', 'C', 'M', 'P')[factor(income$Education)])
+```
+
+## 2. Preparar los datos
+
+```{r}
+set.seed(1)
+train <- sample(1:nrow(income), nrow(income) * 0.8)
+tree.income <- tree(Salary ~ ., income, subset = train)
+summary(tree.income)
+```
+
+## 3. Visualizar el árbol de regresión
+
+```{r}
+plot(tree.income)
+text(tree.income, pretty = FALSE)
+```
+La visualización del árbol no resulta muy complicada e indica que la educación es el factor que más influencial en la predicción del nivel de ingreso.
+
+## 4. Poda del árbol de regresión
+
+```{r}
+cv.income <- cv.tree(tree.income)
+names(cv.income)
+plot(cv.income$size, cv.income$salary, type = 'b')
+```
+
+La revalidación sugiere que los 4 nodos utilizados es el número de nodos óptimo para obtener el mínimo de desviación, así que la poda solo repite el proceso.
+
+```{r}
+prune.income <- prune.tree(tree.income, best = 4)
+plot(prune.income)
+text(prune.income, pretty = 0)
+```
+
+
+```{r}
+yhat <- predict(prune.income, newdata = income[-train, ])
+income.test <- income[-train, 'Salary']
+plot(yhat, income.test)
+# abline(0, 1)
+mean((yhat - income.test) ^ 2)
+```
